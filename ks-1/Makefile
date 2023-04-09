@@ -35,9 +35,9 @@ LDFLAGS += -lm
 LDFLAGS += -lpthread
 
 
-SRCS += test.c
-OBJS += test.o
-BINS += test
+SRCS = $(wildcard *.c) 
+OBJS = $(SRCS:%.c=%.o)
+BINS = $(SRCS:%.c=%)
 
 
 all:clean dir_create $(OBJS) $(BINS) 
@@ -45,7 +45,7 @@ all:clean dir_create $(OBJS) $(BINS)
 $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $^ -o $(OBJ_DIR)/$@
 
-$(BINS):$(OBJS)
+$(BINS):%:%.o
 	$(CC) -o $(BIN_DIR)/$@ $(OBJ_DIR)/$^ $(LDFLAGS)
 
 clean:
