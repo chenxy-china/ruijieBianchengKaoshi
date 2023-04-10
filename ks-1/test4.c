@@ -62,10 +62,10 @@ int scanFile(struct Filenode *szDir)
 
             //从一个当前目录名，变成绝对路径
             int len = strlen(szDir->name);
-            strncpy(curDir->name, szDir->name, len + 1);
+            strncpy(curDir->name, szDir->name, sizeof(curDir->name)-1);
             if (szDir->name[len - 1] != '/') 
                 strncat(curDir->name, "/", 2);
-            strncat(curDir->name, entry->d_name, strlen(entry->d_name) + 1);
+            //strncat(curDir->name, entry->d_name, strlen(entry->d_name)-1);
             curDir->type |= DT_DIR;
 
             //按递归次数(目录深度)打印空格数量
@@ -95,10 +95,10 @@ int scanFile(struct Filenode *szDir)
             
             //从一个当前目录名，变成绝对路径
             int len = strlen(szDir->name);
-            strncpy(curDir->name, szDir->name, len + 1);
+            strncpy(curDir->name, szDir->name, sizeof(curDir->name)-1);
             if (szDir->name[len - 1] != '/') 
                 strncat(curDir->name, "/", 2);
-            strncat(curDir->name, entry->d_name, strlen(entry->d_name) + 1);
+            strncat(curDir->name, entry->d_name, strlen(curDir->name)-strlen(entry->d_name)-1);
             curDir->type = entry->d_type;
 
             //按递归次数(目录深度)打印空格数量
@@ -123,7 +123,7 @@ int main(int argc,char** argv)
     printf("%s\n",dir);
 
     struct Filenode root={0,};
-    strncpy(root.name,dir,strlen(dir));
+    strncpy(root.name,dir,sizeof(root.name)-1);
     root.type |= DT_DIR;
     scanFile(&root);
 
