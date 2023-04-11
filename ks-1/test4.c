@@ -11,7 +11,8 @@
 //定义文件夹,文件的结构
 struct Filenode{
     unsigned char type; //说明是文件，还是文件夹
-    char name[256];     //文件夹的全路径名称 比如： rootdir/dir1/dia2/folder
+    char fullname[256];     //文件、文件夹的全路径名称 比如： rootdir/dir1/dia2/folder
+    char name[256];     //文件、文件夹的名称 比如： folder
     char result[24];    //比较的结果
     struct Filenode* child;     //子目录的指针
     struct Filenode* next;      //同目录的下一个文件夹、文件的指针
@@ -32,9 +33,9 @@ int scanFile(struct Filenode *szDir)
         perror("szDir is NULL");
         return -1;
     }
-    count = scandir(szDir->name, &entry_list, 0, alphasort);
+    count = scandir(szDir->fullname, &entry_list, 0, alphasort);
     if (count < 0) {
-        fprintf(stderr,"scandir [%s] error,%s\n",szDir->name,strerror(errno));
+        fprintf(stderr,"scandir [%s] error,%s\n",szDir->fullname,strerror(errno));
         return EXIT_FAILURE;
     }
 
@@ -66,11 +67,12 @@ int scanFile(struct Filenode *szDir)
             oldDir = curDir;
 
             //从一个当前目录名，变成绝对路径
-            int len = strlen(szDir->name);
-            strncpy(curDir->name, szDir->name, sizeof(curDir->name));
-            if (szDir->name[len - 1] != '/') 
-                strncat(curDir->name, "/", 2);
-            strcat(curDir->name, entry->d_name);
+            int len = strlen(szDir->fullname);
+            strncpy(curDir->fullname, szDir->fullname, sizeof(curDir->fullname));
+            if (szDir->fullname[len - 1] != '/') 
+                strncat(curDir->fullname, "/", 2);
+            strcat(curDir->fullname, entry->d_name);
+            strncpy(curDir->name, entry->d_name, sizeof(curDir->name));
             curDir->type |= DT_DIR;
 
 #ifdef OUTPUT1
@@ -104,11 +106,12 @@ int scanFile(struct Filenode *szDir)
             oldDir = curDir;
             
             //从一个当前目录名，变成绝对路径
-            int len = strlen(szDir->name);
-            strncpy(curDir->name, szDir->name, sizeof(curDir->name));
-            if (szDir->name[len - 1] != '/') 
-                strncat(curDir->name, "/", 2);
-            strcat(curDir->name, entry->d_name);
+            int len = strlen(szDir->fullname);
+            strncpy(curDir->fullname, szDir->fullname, sizeof(curDir->fullname));
+            if (szDir->fullname[len - 1] != '/') 
+                strncat(curDir->fullname, "/", 2);
+            strcat(curDir->fullname, entry->d_name);
+            strncpy(curDir->name, entry->d_name, sizeof(curDir->name));
             curDir->type = entry->d_type;
 
 #ifdef OUTPUT1
@@ -129,6 +132,30 @@ int scanFile(struct Filenode *szDir)
     return 0;
 }
 
+//前序遍历输出目录结构
+int traver_cnt = 0;  //递归次数，就是目录深度
+void PreOderTraverse(struct Filenode *szDir,int flag)
+{
+    if(szDir == NULL){
+        return;
+    }
+
+    if(flag == 1)
+        traver_cnt++;
+    //显示结点数据，可以更改为其他对结点操作
+    //按递归次数(目录深度)打印空格数量
+    for(int i = 0; i < traver_cnt; i++){
+        printf("  ");
+    }
+    //非目录输出文件名
+    printf("-%s\n", szDir->name);
+    PreOderTraverse(szDir->child,1);  //最后遍历右子树 
+    PreOderTraverse(szDir->next,0);   //先遍历左子树
+
+    if(flag == 1)
+        traver_cnt--;
+ } 
+
 int main(int argc,char** argv)
 {
     char * dir = "/home/chenxy/test";
@@ -136,9 +163,11 @@ int main(int argc,char** argv)
     printf("%s\n",dir);
 
     struct Filenode root={0,};
-    strncpy(root.name,dir,sizeof(root.name));
+    strncpy(root.fullname,dir,sizeof(root.fullname));
     root.type |= DT_DIR;
     scanFile(&root);
+
+    PreOderTraverse(&root,0);
 
     return 0;
 }
