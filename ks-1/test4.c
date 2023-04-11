@@ -6,6 +6,8 @@
 #include <string.h>
 #include <errno.h>
 
+//#define OUTPUT1
+
 //定义文件夹,文件的结构
 struct Filenode{
     unsigned char type; //说明是文件，还是文件夹
@@ -40,6 +42,7 @@ int scanFile(struct Filenode *szDir)
     for (i = 0; i < count; i++) {
         struct dirent *entry;
         entry = entry_list[i];
+
         if(entry->d_type & DT_DIR){
             //目录
             if (strcmp(entry->d_name, ".") == 0 
@@ -47,6 +50,7 @@ int scanFile(struct Filenode *szDir)
                 continue;
             }
 
+            //创建一个新的文件节点，将其窜到szDir->child节点或者next节点上
             struct Filenode *curDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
             if(i == 2){
                 szDir->child = curDir;
@@ -55,6 +59,7 @@ int scanFile(struct Filenode *szDir)
                     oldDir->next = curDir;
                 }else{
                     perror("oldDir is NULL");
+                    //T.B.D 释放已经分配的curDir
                     return -1;
                 }
             }
@@ -62,25 +67,28 @@ int scanFile(struct Filenode *szDir)
 
             //从一个当前目录名，变成绝对路径
             int len = strlen(szDir->name);
-            strncpy(curDir->name, szDir->name, sizeof(curDir->name)-1);
+            strncpy(curDir->name, szDir->name, sizeof(curDir->name));
             if (szDir->name[len - 1] != '/') 
                 strncat(curDir->name, "/", 2);
-            //strncat(curDir->name, entry->d_name, strlen(entry->d_name)-1);
+            strcat(curDir->name, entry->d_name);
             curDir->type |= DT_DIR;
 
+#ifdef OUTPUT1
             //按递归次数(目录深度)打印空格数量
             for(int i = 0; i < recur_cnt; i++){
                 printf("  ");
             }
             //目录输出目录名
             printf("-%s\n", entry->d_name);
-
+#endif
             //递归调用
             if(scanFile(curDir) < 0){
                 printf("递归调用错误\n");
             }
         }else{
             //非目录类型
+
+            //创建一个新的文件节点，将其窜到szDir->child节点或者next节点上
             struct Filenode *curDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
             if(i == 2){
                 szDir->child = curDir;
@@ -89,24 +97,29 @@ int scanFile(struct Filenode *szDir)
                     oldDir->next = curDir;
                 }else{
                     perror("oldDir is NULL");
+                    //T.B.D 释放已经分配的curDir
+                    return -1;
                 }
             }
             oldDir = curDir;
             
             //从一个当前目录名，变成绝对路径
             int len = strlen(szDir->name);
-            strncpy(curDir->name, szDir->name, sizeof(curDir->name)-1);
+            strncpy(curDir->name, szDir->name, sizeof(curDir->name));
             if (szDir->name[len - 1] != '/') 
                 strncat(curDir->name, "/", 2);
-            strncat(curDir->name, entry->d_name, strlen(curDir->name)-strlen(entry->d_name)-1);
+            strcat(curDir->name, entry->d_name);
             curDir->type = entry->d_type;
 
+#ifdef OUTPUT1
             //按递归次数(目录深度)打印空格数量
             for(int i = 0; i < recur_cnt; i++){
                 printf("  ");
             }
             //非目录输出文件名
             printf("-%s\n", entry->d_name);
+#endif
+
         }
         free(entry);
     }
@@ -123,7 +136,7 @@ int main(int argc,char** argv)
     printf("%s\n",dir);
 
     struct Filenode root={0,};
-    strncpy(root.name,dir,sizeof(root.name)-1);
+    strncpy(root.name,dir,sizeof(root.name));
     root.type |= DT_DIR;
     scanFile(&root);
 
