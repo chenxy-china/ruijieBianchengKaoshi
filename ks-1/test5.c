@@ -149,12 +149,29 @@ void PreOderTraverse(struct Filenode *szDir,int flag)
     }
     //非目录输出文件名
     printf("-%s\n", szDir->name);
-    PreOderTraverse(szDir->child,1);  //最后遍历右子树 
-    PreOderTraverse(szDir->next,0);   //先遍历左子树
+    PreOderTraverse(szDir->child,1);  //先遍历左子树（遍历子目录）
+    PreOderTraverse(szDir->next,0);   //后遍历右子树 （遍历同级目录）
 
     if(flag == 1)
         traver_cnt--;
  } 
+
+//比较两个目录szDir1，szDir2，以szDir1作为base, 比较结果保持到rslDir
+ void compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filenode *rsltDir)
+ {
+    if(szDir1 == NULL && szDir2 == NULL){
+        return;
+    }
+
+    if(szDir1 == NULL && szDir2 != NULL){
+        
+    }else if(szDir1 != NULL && szDir2 == NULL){
+        
+    }else if(szDir1 != NULL && szDir2 != NULL){
+
+    }
+
+ }
 
 int main(int argc,char** argv)
 {
@@ -162,13 +179,19 @@ int main(int argc,char** argv)
     //输出根目录
     printf("%s\n",dir);
 
+    //创建根目录节点
     struct Filenode root={0,};
     strncpy(root.fullname,dir,sizeof(root.fullname));
     strcpy(root.name,"test");
     root.type |= DT_DIR;
+    //通过扫描目录，拓展根目录节点
     scanFile(&root);
 
+    //前序遍历目录节点
     PreOderTraverse(&root,0);
+
+    struct Filenode rsltDir={0,};
+    compareTraverse(&root,&root,&rsltDir);
 
     return 0;
 }
