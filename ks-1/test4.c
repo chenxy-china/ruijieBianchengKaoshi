@@ -164,6 +164,7 @@ int main(int argc,char** argv)
 
     struct Filenode root={0,};
     strncpy(root.fullname,dir,sizeof(root.fullname));
+    strcpy(root.name,"test");
     root.type |= DT_DIR;
     scanFile(&root);
 

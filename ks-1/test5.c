@@ -208,10 +208,16 @@ void compareFolderNode(struct Filenode *szDir1,struct Filenode *szDir2)
             {
                 //如果第一个目录非空，开始循环比较
                 while(compTarget != NULL){
-                    
-                    //文件、文件夹名称相同，且类型相同时，是可以深入比较的，否则就不同
-                    if(strcmp(compTarget->name,compSource->name) && (compTarget->type == compSource->type))
+                    //获取比较结果
+                    int crCmpRst = strcmp(compTarget->name,compSource->name);
+                    if( crCmpRst < 0 ){
+                        //由于第一个目录中的文件名是从小到大排序的
+                        continue;
+                    }else if(crCmpRst > 0 ){
+
+                    }else if( crCmpRst == 0 && (compTarget->type == compSource->type))
                     {
+                        //文件、文件夹名称相同，且类型相同时，是可以深入比较的，否则就不同
                         //创建一个新的文件节点，将其窜到szDir->child节点或者next节点上
                         struct Filenode *newDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
                         memcpy(newDir,compTarget,sizeof(struct Filenode));
