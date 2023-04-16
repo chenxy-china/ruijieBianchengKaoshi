@@ -136,6 +136,10 @@ int scanFile(struct Filenode *szDir)
 
 //前序遍历输出目录结构
 int traver_cnt = 0;  //递归次数，就是目录深度
+/*
+    参数1 struct Filenode *szDir ，目录结构指针
+    参数2 int flag，表示是子目录还是同级目录，1：子目录，需要目录深度+-操作，0：同级目录，不做目录深度+-操作
+*/
 void PreOderTraverse(struct Filenode *szDir,int flag)
 {
     if(szDir == NULL){
@@ -151,6 +155,7 @@ void PreOderTraverse(struct Filenode *szDir,int flag)
     }
     //非目录输出文件名
     printf("-%s\n", szDir->name);
+
     PreOderTraverse(szDir->child,1);  //先遍历左子树（遍历子目录）
     PreOderTraverse(szDir->next,0);   //后遍历右子树 （遍历同级目录）
 
@@ -158,19 +163,98 @@ void PreOderTraverse(struct Filenode *szDir,int flag)
         traver_cnt--;
  } 
 
+//前序遍历输出目录结构
+int compTraver_cnt = 0;  //递归次数，就是目录深度
+/*
+    参数1 struct Filenode *szDir ，目录结构指针
+    参数2 int flag，表示是子目录还是同级目录，1：子目录，需要目录深度+-操作，0：同级目录，不做目录深度+-操作
+    参数3 int result, 表示比较结果，如果是0：文件只有base存在 ,1:文件只有target存在，2，两个都存在，但是不同 ,
+*/
+void compPreOderTraverse(struct Filenode *szDir,int flag,int result)
+{
+    if(szDir == NULL){
+        return;
+    }
+
+    if(flag == 1)
+        compTraver_cnt++;
+    //显示结点数据，可以更改为其他对结点操作
+    //按递归次数(目录深度)打印空格数量
+    for(int i = 0; i < compTraver_cnt; i++){
+        printf("  ");
+    }
+    //非目录输出文件名
+    if(result == 0){
+        printf("-%s\n", szDir->name);
+    }else if(result == 1){
+        printf("-%s\t+\n", szDir->name);
+    }else if(result == 2){
+        printf("-%s\tdiff\n", szDir->name);
+    }
+    PreOderTraverse(szDir->child,1);  //先遍历左子树（遍历子目录）
+    PreOderTraverse(szDir->next,0);   //后遍历右子树 （遍历同级目录）
+
+    if(flag == 1)
+        compTraver_cnt--;
+ } 
+
 void compareFolderNode(struct Filenode *szDir1,struct Filenode *szDir2)
 {
 
 }
 
+/// 比较两个文件内容是否相同
+/// </summary>
+/// <param name="file1">文件1的路径</param>
+/// <param name="file2">文件2的路径</param>
+/// <returns>是否相同，0相同，非0不相同</returns>
+int CompareFile(const char * file1, const char* file2)
+{
+	FILE* f1, * f2;
+	int size1, size2;
+	unsigned char buffer1[1024], buffer2[1024];
+	f1 = fopen(file1, "rb+");
+	f2 = fopen(file2, "rb+");
+	int isTheSame = -1;
+	if (!f1)
+		goto end;
+	if (!f2)
+		goto end;
+	while (1)
+	{
+		size1 = fread(buffer1, 1, 1024, f1);
+		size2 = fread(buffer2, 1, 1024, f2);
+		if (size1 != size2)
+		{
+			goto end;
+		}
+		if (size1 < 1)
+			break;
+		for (int i = 0; i < size1; i++)
+		{
+			if (buffer1[i] != buffer2[i])
+			{
+				goto end;
+			}
+		}
+	}
+	isTheSame = 0;
+end:
+	if (f1)
+		fclose(f1);
+	if (f2)
+		fclose(f2);
+	return isTheSame;
+}
 
 //比较两个目录szDir1，szDir2，以szDir1作为base, 比较结果保持到rslDir
- void compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filenode *rsltDir)
- {
+int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filenode *rsltDir)
+{
     if(szDir1 == NULL || szDir2 == NULL){
-        return;
+        return 0;
     }
 
+    compTraver_cnt++;
     //取第二个目录的第一个文件作为比较源，与第一个目录下的所有文件相比较
     struct Filenode * compSource  = szDir2->child;
     struct Filenode * compTarget  = szDir1->child;
@@ -179,71 +263,124 @@ void compareFolderNode(struct Filenode *szDir1,struct Filenode *szDir2)
     
         if(compTarget != NULL){
             //如果第一个目录的内容不为空
-            //创建一个新的文件节点，内容和第一个目录的child节点相同
-            struct Filenode *newDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
-            memcpy(newDir,compTarget,sizeof(struct Filenode));
-            //串到rsltDir中
-            rsltDir->child = newDir;
+            // //创建一个新的文件节点，内容和第一个目录的child节点相同
+            // struct Filenode *newDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
+            // memcpy(newDir,compTarget,sizeof(struct Filenode));
+            // //串到rsltDir中
+            // rsltDir->child = newDir;
+            compPreOderTraverse(szDir1,0,0);
         }else{
             //两个目录都为空，啥都不做
-
         }
     }else{
         //如果第二个目录的内容非空
 
         if(compTarget == NULL){
             //如果第一个目录为空 
-            //创建一个新的文件节点，内容和第二个目录的child节点相同，但是要标记一下是新增节点
-            struct Filenode *newDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
-            memcpy(newDir,compSource,sizeof(struct Filenode));
-            //但是要标记一下是新增节点
-            newDir->new_flag = 1;
-
-            //串到rsltDir中
-            rsltDir->child = newDir;
+            //说明第二个目录中这些个文件是第一个目录里没有的
+            compPreOderTraverse(szDir2,0,1);
+            return -1;
         }else{
 
             //如果第二个目录的内容非空，第一个目录也非空 开始循环比较
             while(compSource != NULL){
-            {
+                int lastCmpRst = 1;
                 //如果第一个目录非空，开始循环比较
                 while(compTarget != NULL){
-                    //获取比较结果
-                    int crCmpRst = strcmp(compTarget->name,compSource->name);
-                    if( crCmpRst < 0 ){
-                        //由于第一个目录中的文件名是从小到大排序的
-                        continue;
-                    }else if(crCmpRst > 0 ){
-
-                    }else if( crCmpRst == 0 && (compTarget->type == compSource->type))
-                    {
+                    
+                    /*strcmp(const char *str1, const char *str2) 
+                     str1 小于 str2 返回值小于 0
+                      str1 大于 str2 返回值大于 0
+                      str1 等于 str2 返回值等于 0
+                    */
+                   //获取第二个目录中文件，和第一个目录中文件 比较结果
+                    int crCmpRst = strcmp(compSource->name,compTarget->name);
+                    if( crCmpRst > 0 && lastCmpRst > 0){
+                        //说明compTarget这个文件/文件夹 ，只有第一个目录有
+                        if(compTarget->type == DT_CHR){
+                            compPreOderTraverse(compTarget,0,0);
+                        }else{
+                            for(int i = 0; i < compTraver_cnt; i++){
+                                printf("  ");
+                            }
+                            printf("-%s\n", compTarget->name);
+                        }
+                        
+                        //由于第一个目录中的文件名是从小到大排序的,所以需要compSource比较下一个compTarget
+                        lastCmpRst = crCmpRst;
+                        continue;   ////goto next_file_in_folder1
+                    }else if(crCmpRst < 0 && lastCmpRst > 0){
+                        //由于第一个目录中的文件名是从小到大排序的,说明compTarget后面的字符串全都大于compSource
+                        //说明compSource这个文件/文件夹 ，只有第二个目录有
+                        if(compSource->type == DT_CHR){
+                            compPreOderTraverse(compSource,0,1);
+                        }else{
+                            for(int i = 0; i < compTraver_cnt; i++){
+                                printf("  ");
+                            }
+                            printf("-%s\t+\n", compSource->name);
+                        }
+                        break;  //goto next_file_in_folder2
+                    }else if( crCmpRst == 0 && (compTarget->type != compSource->type)){
+                         //文件、文件夹名称相同，且类型不同时
+                        for(int i = 0; i < compTraver_cnt; i++){
+                            printf("  ");
+                        }
+                        printf("-%s\tdiff\n", compSource->name);
+                    }else if( crCmpRst == 0 && (compTarget->type == compSource->type)){
                         //文件、文件夹名称相同，且类型相同时，是可以深入比较的，否则就不同
-                        //创建一个新的文件节点，将其窜到szDir->child节点或者next节点上
-                        struct Filenode *newDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
-                        memcpy(newDir,compTarget,sizeof(struct Filenode));
-                        rsltDir->child = rsltDir;
-                        compareTraverse(compTarget,compSource,rsltDir);
-
+                        
+                        if(compTarget->type == DT_CHR){
+                            //如果是字符串文件类型，比较文件，输出比较结果
+                            if(CompareFile(compSource->fullname,compTarget->fullname) == 0){
+                                for(int i = 0; i < compTraver_cnt; i++){
+                                    printf("  ");
+                                }
+                                printf("-%s\n", compSource->name);
+                            }else{
+                                for(int i = 0; i < compTraver_cnt; i++){
+                                    printf("  ");
+                                }
+                                printf("-%s\tdiff\n", compSource->name);
+                            }
+                        }else if(compTarget->type == DT_DIR){
+                            //如果是目录类型，递归比较该两个目录
+                            if(compareTraverse(compTarget,compSource,rsltDir) ==0){
+                                for(int i = 0; i < compTraver_cnt; i++){
+                                    printf("  ");
+                                }
+                                printf("-%s\n", compSource->name);
+                            }else{
+                                for(int i = 0; i < compTraver_cnt; i++){
+                                    printf("  ");
+                                }
+                                printf("-%s\tdiff\n", compSource->name);
+                            }
+                        }else{
+                            for(int i = 0; i < compTraver_cnt; i++){
+                                printf("  ");
+                            }
+                            printf("-%s\tdiff\n", compSource->name);
+                        }
+                        // //创建一个新的文件节点，将其窜到szDir->child节点或者next节点上
+                        // struct Filenode *newDir = (struct Filenode *) calloc(sizeof(struct Filenode),1);
+                        // memcpy(newDir,compTarget,sizeof(struct Filenode));
+                        // rsltDir->child = rsltDir;
+                        
                         break;
                     }
+//next_file_in_folder1:
                     compTarget = compTarget->next;
                 }
-                
+//next_file_in_folder2:
                 //取第二个目录的下一个文件
                 compSource = compSource->next;
             }
         }
-
-
-
-            
-
-        }
     }
-
-
-
- }
+    compTraver_cnt--;
+    return 0;
+}
 
 int main(int argc,char** argv)
 {
