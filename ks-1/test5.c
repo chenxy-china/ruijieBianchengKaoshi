@@ -5,6 +5,8 @@
 #include <dirent.h>
 #include <string.h>
 #include <errno.h>
+#include <sys/stat.h> 
+#include <time.h>  
 
 //#define OUTPUT1
 
@@ -139,8 +141,9 @@ int traver_cnt = 0;  //递归次数，就是目录深度
 /*
     参数1 struct Filenode *szDir ，目录结构指针
     参数2 int flag，表示是子目录还是同级目录，1：子目录，需要目录深度+-操作，0：同级目录，不做目录深度+-操作
+    参数3 是否将不同文件 以压缩方式写入文件 ， NLLL：不写入；非NULL：写入
 */
-void PreOderTraverse(struct Filenode *szDir,int flag, int x)
+void PreOderTraverse(struct Filenode *szDir,int flag, FILE * fd)
 {
     if(szDir == NULL){
         return;
@@ -148,21 +151,29 @@ void PreOderTraverse(struct Filenode *szDir,int flag, int x)
 
     if(flag == 1)
         traver_cnt++;
-    //显示结点数据，可以更改为其他对结点操作
-    //按递归次数(目录深度)打印空格数量
-    for(int i = 0; i < traver_cnt; i++){
-        printf("  ");
-    }
-    //非目录输出文件名
-    if(szDir->result == NULL){
-        printf("|-%s\n", szDir->name);
-    }else{
-        printf("|-%s\t%s\n", szDir->name,szDir->result);
-    }
-    
 
-    PreOderTraverse(szDir->child,1,0);  //先遍历左子树（遍历子目录）
-    PreOderTraverse(szDir->next,0,0);   //后遍历右子树 （遍历同级目录）
+    if(fd == NULL){
+        //显示结点数据，可以更改为其他对结点操作
+        //按递归次数(目录深度)打印空格数量
+        for(int i = 0; i < traver_cnt; i++){
+            printf("  ");
+        }
+
+        //输出文件名 及比较结果
+        if(szDir->result == NULL){
+            printf("|-%s\n", szDir->name);
+        }else{
+            printf("|-%s\t%s\n", szDir->name,szDir->result);
+        }
+    }else{
+        if(strcmp(szDir->result,"same") != 0){
+            char buf[512]={0,};
+            snprintf(buf,sizeof(buf),"%s,",szDir->fullname);
+            fwrite( buf, 1, sizeof(buf), fd );//将buf中的数据写到FILE *fd对应的流中，也是写到文件中
+        }
+    }
+    PreOderTraverse(szDir->child,1,fd);  //先遍历左子树（遍历子目录）
+    PreOderTraverse(szDir->next,0,fd);   //后遍历右子树 （遍历同级目录）
 
     if(flag == 1)
         traver_cnt--;
@@ -198,11 +209,6 @@ void compPreOderTraverse(struct Filenode *szDir,int flag,int result)
     if(flag == 1)
         compTraver_cnt--;
  } 
-
-void compareFolderNode(struct Filenode *szDir1,struct Filenode *szDir2)
-{
-
-}
 
 /// 比较两个文件内容是否相同
 /// </summary>
@@ -255,6 +261,8 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
         return 0;
     }
 
+    int result = 0; //默认相同
+
     compTraver_cnt++;
     //取第二个目录的第一个文件作为比较源，与第一个目录下的所有文件相比较
     struct Filenode * compSource  = szDir2->child;
@@ -304,6 +312,7 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                     node = newDir;
                 }
 
+                result = 1;
                 compSource = compSource->next;
             }else if(compSource == NULL){
                 //如果第二个目录为空 
@@ -324,6 +333,7 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                     node = newDir;
                 }
                 
+                result = 1;
                 compTarget = compTarget->next;
             }else{
                 //如果两个目录都非空，开始循环比较                  
@@ -355,6 +365,7 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                     //由于第一个目录中的文件名是从小到大排序的,所以需要compSource比较下一个compTarget
                     lastCmpRst = crCmpRst;
 
+                    result = 1;
                     compTarget = compTarget->next;
                 }else if(crCmpRst < 0 && lastCmpRst > 0){
                     //由于第一个目录中的文件名是从小到大排序的,说明compTarget后面的字符串全都大于compSource
@@ -374,6 +385,7 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                         node->next = newDir;
                         node = newDir;
                     }
+                    result = 1;
 
                     compSource = compSource->next;
                 }else if( crCmpRst == 0 ){
@@ -385,7 +397,7 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                     if(compTarget->type != compSource->type){
                         //类型不同时,本质差异
                         compPreOderTraverse(newDir,0,2);
-
+                        result = 1;
                     }else if(compTarget->type == compSource->type){
                         //文件、文件夹名称相同，且类型相同时，是可以深入比较的，否则就不同
 
@@ -393,21 +405,48 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                             //如果是常规文件文件类型，比较文件，输出比较结果
                             if(CompareFile(compSource->fullname,compTarget->fullname) == 0){
                                 //内容相同
-                                strcpy(newDir->result,"轻微差异");
+                                //比较权限属性差异、访问时间的差异
+                                struct stat statbuf1,statbuf2;  
+                                if (stat(compSource->fullname, &statbuf1) == -1) {  
+                                    printf("Get stat on %s Error: %s\n",  
+                                            compSource->fullname, strerror(errno));  
+                                    return (-1);  
+                                }
+                                if (stat(compTarget->fullname, &statbuf2) == -1) {  
+                                    printf("Get stat on %s Error: %s\n",  
+                                            compTarget->fullname, strerror(errno));  
+                                    return (-1);  
+                                }
+
+                                if((strcmp(ctime(&(statbuf1.st_mtime)),ctime(&(statbuf2.st_mtime))) != 0) ||
+                                    (statbuf1.st_mode != statbuf2.st_mode) )
+                                {
+                                    result = 2;
+                                    strcpy(newDir->result,"轻微差异");
+                                }else{
+                                    strcpy(newDir->result,"same");
+                                }
                             }else{
                                 //内容不同
+                                result = 1;
                                 strcpy(newDir->result,"本质差异");
                             }
                         }else if(compTarget->type == DT_DIR){
                             //如果是目录类型，递归比较该两个目录
-                            if(compareTraverse(compTarget,compSource,newDir) == 0){
+                            int ret = compareTraverse(compTarget,compSource,newDir);
+                            if( ret == 0){
                                 strcpy(newDir->result,"same");
+                            }else if (ret == 1) {
+                                result = 1;
+                                strcpy(newDir->result,"本质差异");
                             }else{
-                                strcpy(newDir->result,"diff");
+                                result = 2;
+                                strcpy(newDir->result,"轻微差异");
                             }
                         }else if(compTarget->type == DT_LNK){
                             
                         }else{
+                            result = 1;
                             strcpy(newDir->result,"类型不同");
                         }            
                     }
@@ -427,15 +466,17 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
         }
     }
     compTraver_cnt--;
-    return 0;
+    return result;
 }
 
 int main(int argc,char** argv)
 {
 
-    if(argc != 2 && argc != 3)
+
+    if(argc != 3 && argc != 4)
     {
         printf("Usage: %s folder1 folder2 [x] \n",argv[0]);
+        printf("argc %d ,argv :%s %s %s %s \n",argc,argv[0],argv[1],argv[2],argv[3]);
         return 0;
     }
     
@@ -456,8 +497,10 @@ int main(int argc,char** argv)
     scanFile(&root);
 
     //前序遍历目录节点
-    PreOderTraverse(&root,0,0);
+ #ifdef OUTPUT1
+    PreOderTraverse(&root,0,NULL);
     printf("++++++++++++++++++++++\n");
+#endif
 
     //创建比较目录2根目录节点
     struct Filenode root2={0,};
@@ -467,20 +510,24 @@ int main(int argc,char** argv)
     //通过扫描目录，拓展根目录节点
     scanFile(&root2);
 
+ #ifdef OUTPUT1
     //前序遍历目录节点
-    PreOderTraverse(&root2,0,0);
+    PreOderTraverse(&root2,0,NULL);
     printf("++++++++++++++++++++++\n");
-
+#endif
 
     struct Filenode rsltDir={0,};
     strcpy(rsltDir.name,"compileResult");
     compareTraverse(&root,&root2,&rsltDir);
 
     //输出比较结果
-    if(strcmp(argv[3],"x") == 0){
-        PreOderTraverse(&rsltDir,0,1);
+    if(argc == 4 && strcmp(argv[3],"x") == 0){
+        FILE *fd;
+        fd = fopen("/home/chenxy/test/ks-1/result.csv","w+");
+        PreOderTraverse(&rsltDir,0,fd);
+        fclose(fd);
     }else{
-        PreOderTraverse(&rsltDir,0,0);
+        PreOderTraverse(&rsltDir,0,NULL);
     }
     return 0;
 }
