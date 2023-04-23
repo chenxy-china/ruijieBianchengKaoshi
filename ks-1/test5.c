@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <sys/stat.h> 
 #include <time.h>  
+#include <unistd.h>
 
 //#define OUTPUT1
 
@@ -444,7 +445,19 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                                 strcpy(newDir->result,"轻微差异");
                             }
                         }else if(compTarget->type == DT_LNK){
-                            
+                            char buf1[512]={0,},buf2[512]={0,};
+                            ssize_t len1=0,len2=0;
+                            if (((len1 = readlink(compTarget->fullname, buf1, sizeof(buf1) - 1)) != -1) && 
+                            ((len2 = readlink(compSource->fullname, buf2, sizeof(buf2) - 1)) != -1)){
+                                if(len1 == len2 && (strcmp(buf1,buf2) == 0)){
+                                    strcpy(newDir->result,"same");
+                                }else{
+                                    strcpy(newDir->result,"本质差异");
+                                }
+                            }else{
+                                printf("Get readlink Error: %s\n",  strerror(errno));  
+                                return (-1);  
+                            }
                         }else{
                             result = 1;
                             strcpy(newDir->result,"类型不同");
