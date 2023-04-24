@@ -50,14 +50,8 @@ void rm_other_blank(char *str)
     }
 }
 
-int main(int argc, char **argv)
+int singlePidAnalysis(int pid)
 {
-    int pid = 3326;
-    if (argc == 2)
-    {
-        pid = atoi(argv[1]);
-    }
-
     char pidDir[32] = {
         0,
     };
@@ -293,4 +287,18 @@ int main(int argc, char **argv)
     }
 #endif
     closedir(dir);
+    return 0;
+}
+
+int main(int argc, char **argv)
+{
+    int pid = 3326;
+    if (argc == 2){
+        pid = atoi(argv[1]);
+        singlePidAnalysis(pid);
+
+    }else{
+
+
+    }
 }
