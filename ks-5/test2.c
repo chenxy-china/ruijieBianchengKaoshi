@@ -5,7 +5,7 @@
 #include <sys/types.h>
 #include <regex.h>
 
-int chk_regular(char *pattern, char *str)
+int chk_regular(char *pattern, char *str,char full)
 {
     int find = 1;
     regex_t reg;
@@ -19,10 +19,20 @@ int chk_regular(char *pattern, char *str)
     int nmatch=10;
 
     rtn = regexec(&reg,str,nmatch,&pmatch[0],0);
-    if(rtn == REG_NOMATCH)
-    {
+    if(rtn == REG_NOMATCH) {
+        //没找到匹配项
         find = 0;
+    } else if(rtn == REG_NOERROR) {
+        //找到匹配项
+        if(full == 1){
+            //判断全匹配
+            int len = pmatch[0].rm_eo - pmatch[0].rm_so;
+            if(len != strlen(str)){
+                find = 0;
+            }
+        }
     }
+    
     regfree(&reg);
 
     return find;
@@ -90,12 +100,17 @@ int chk_number(char *str)
 
         //正则表达式判断
         //如果含有字母
-        if(chk_regular("[a-z]+",str) == 1){
+        if(chk_regular("[a-z]+",str,0) == 1){
+            result = 0;
+        }
+
+        //如果不含有数字
+        if(chk_regular("[0-9]+",str,0) == 0){
             result = 0;
         }
 
         //如果不全是数字
-        if(chk_regular("^[+-]?[^a-zA-Z][0-9]*[.]?[0-9]*",str) != 1){
+        if(chk_regular("^[+-]?[^a-zA-Z][0-9]*[.]?[0-9]*",str,1) != 1){
             result = 0;
         }
 
@@ -129,13 +144,18 @@ int chk_number(char *str)
 
             //正则表达式判断
             //如果含有字母
-            if(chk_regular("[a-z]+",token) == 1)
+            if(chk_regular("[a-z]+",token,0) == 1)
             {
                 result = 0;
             }
 
+            //如果不含有数字
+            if(chk_regular("[0-9]+",token,0) == 0){
+                result = 0;
+            }
+
             //如果不全是数字
-            if(chk_regular("^[+-]?[^a-z][0-9]*[.]?[0-9]*",token) != 1){
+            if(chk_regular("^[+-]?[^a-z][0-9]*[.]?[0-9]*",token,1) != 1){
                 result = 0;
             }
 
@@ -169,13 +189,13 @@ int chk_number(char *str)
                 
                 //正则表达式判断
                 //如果含有字母
-                if(chk_regular("[a-z]+",token) == 1)
+                if(chk_regular("[a-z]+",token,0) == 1)
                 {
                     result = 0;
                 }
 
                 //如果不全是整数
-                if(chk_regular("^[+-]?[0-9]+",token) != 1){
+                if(chk_regular("^[+-]?[0-9]+",token,1) != 1){
                     result = 0;
                 }
 
@@ -192,20 +212,35 @@ int main (int argc,char *argv[])
 {   
     int rtn = -1;
     char buf[1024] = {0};
-
-    while(1){
-        if(NULL == fgets(buf, 1024, stdin)){
-            return -1;
+    char lbuf[1024] = {0};
+    char ch = '\0';
+    int i = 0;
+    
+    while(1)
+    {
+        ch = fgetc(stdin);
+        if(ch == 0x1B ){
+            break;  /* ESC 键退出 */
+        }else if(ch == 0xE0 ){ //UP KEY 显示之前的字符
+            ch = fgetc(stdin);
+            if(ch == 0x48 ){
+                printf("%s",lbuf);
+            }
+            continue;
+        }else if( ch != '\n'){
+            printf("%c",ch);
+            buf[i] = ch;
+            i++;
+            continue;
         }
 
-        buf[strlen(buf)-1] = '\0';		// 去除\n
+        memcpy(lbuf,buf,sizeof(buf));
 
-        if(strcmp(buf,"quit") == 0){
-            break;
-        }
-
+        buf[i-1] = '\0';		// 去除\n
         rtn = chk_number(buf);
         printf("==>%d\n",rtn);
+
+        i=0;
     }
 
     return 0;
