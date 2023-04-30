@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <regex.h>
+#include <termios.h>
 
 int chk_regular(char *pattern, char *str,char full)
 {
@@ -215,7 +216,16 @@ int main (int argc,char *argv[])
     char lbuf[1024] = {0};
     char ch = '\0';
     int i = 0;
-    
+
+    setvbuf (stdout, NULL, _IONBF, 0);
+    struct termios new_setting, init_setting;
+    tcgetattr(0, &init_setting);
+    new_setting = init_setting;
+    // get termios setting and save it
+    new_setting.c_lflag &= ~ECHO;
+    tcsetattr(0, TCSANOW, &new_setting);
+
+    printf("please enter : \n");
     while(1)
     {
         ch = fgetc(stdin);
@@ -229,6 +239,7 @@ int main (int argc,char *argv[])
             continue;
         }else if( ch != '\n'){
             printf("%c",ch);
+            fflush(stdout);
             buf[i] = ch;
             i++;
             continue;
@@ -240,8 +251,10 @@ int main (int argc,char *argv[])
         rtn = chk_number(buf);
         printf("==>%d\n",rtn);
 
+        printf("please enter : \n");
         i=0;
     }
 
+    tcsetattr(0, TCSANOW, &init_setting);
     return 0;
 }
