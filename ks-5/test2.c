@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <regex.h>
 #include <termios.h>
+#include <unistd.h>
+#include <sys/select.h>
 
 int chk_regular(char *pattern, char *str,char full)
 {
@@ -211,45 +213,61 @@ int chk_number(char *str)
 
 int main (int argc,char *argv[])
 {   
-    int rtn = -1;
+    int result;
+    unsigned char ch = '\0',lch = '\0';
     char buf[1024] = {0};
     char lbuf[1024] = {0};
-    char ch = '\0';
     int i = 0;
 
-    setvbuf (stdout, NULL, _IONBF, 0);
     struct termios new_setting, init_setting;
     tcgetattr(0, &init_setting);
-    new_setting = init_setting;
-    // get termios setting and save it
-    new_setting.c_lflag &= ~ECHO;
+    new_setting = init_setting;    // get termios setting and save it
+    new_setting.c_lflag &= ~(ICANON | ECHO);
     tcsetattr(0, TCSANOW, &new_setting);
+
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(0, &readfds);
+    int fd = STDIN_FILENO;
 
     printf("please enter : \n");
     while(1)
     {
-        ch = fgetc(stdin);
+        result = pselect (1, &readfds, NULL, NULL, NULL, NULL);
+
+        result = read(fd, &ch, 1);
+
+        if (result != 1) {
+            break;
+        }
+
+        lch = ch;
+
         if(ch == 0x1B ){
-            break;  /* ESC 键退出 */
-        }else if(ch == 0xE0 ){ //UP KEY 显示之前的字符
-            ch = fgetc(stdin);
-            if(ch == 0x48 ){
-                printf("%s",lbuf);
+            continue;
+        }else if( lch == 0x1B){
+            if(ch == 'A'){
+                int ret = write(STDOUT_FILENO, &lbuf, sizeof(lbuf));
+                memcpy(buf,lbuf,sizeof(lbuf));
+                i=sizeof(lbuf);
+                if(ret == 0)
+                    continue;
             }
             continue;
         }else if( ch != '\n'){
-            printf("%c",ch);
-            fflush(stdout);
+            int ret = write(STDOUT_FILENO, &ch, 1);	
             buf[i] = ch;
             i++;
+            if(ret == 0)
+                continue;
             continue;
         }
 
+        buf[i-1] = '\0';		// 去除\n
         memcpy(lbuf,buf,sizeof(buf));
 
-        buf[i-1] = '\0';		// 去除\n
-        rtn = chk_number(buf);
-        printf("==>%d\n",rtn);
+        result = chk_number(buf);
+        printf("==>%d\n",result);
 
         printf("please enter : \n");
         i=0;
