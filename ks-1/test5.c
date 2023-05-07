@@ -198,11 +198,11 @@ void compPreOderTraverse(struct Filenode *szDir,int flag,int result)
 
     //非目录输出文件名
     if(result == 0){
-        strcpy(szDir->result,"无对应");
+        strcpy(szDir->result,"nocor");
     }else if(result == 1){
-        strcpy(szDir->result,"缺少");
+        strcpy(szDir->result,"miss");
     }else if(result == 2){
-        strcpy(szDir->result,"本质差异");
+        strcpy(szDir->result,"ladiff");
     }
     compPreOderTraverse(szDir->child,1,result);  //先遍历左子树（遍历子目录）
     compPreOderTraverse(szDir->next,0,result);   //后遍历右子树 （遍历同级目录）
@@ -423,14 +423,14 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                                     (statbuf1.st_mode != statbuf2.st_mode) )
                                 {
                                     result = 2;
-                                    strcpy(newDir->result,"轻微差异");
+                                    strcpy(newDir->result,"lidiff");
                                 }else{
                                     strcpy(newDir->result,"same");
                                 }
                             }else{
                                 //内容不同
                                 result = 1;
-                                strcpy(newDir->result,"本质差异");
+                                strcpy(newDir->result,"ladiff");
                             }
                         }else if(compTarget->type == DT_DIR){
                             //如果是目录类型，递归比较该两个目录
@@ -439,10 +439,10 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                                 strcpy(newDir->result,"same");
                             }else if (ret == 1) {
                                 result = 1;
-                                strcpy(newDir->result,"本质差异");
+                                strcpy(newDir->result,"ladiff");
                             }else{
                                 result = 2;
-                                strcpy(newDir->result,"轻微差异");
+                                strcpy(newDir->result,"lidiff");
                             }
                         }else if(compTarget->type == DT_LNK){
                             char buf1[512]={0,},buf2[512]={0,};
@@ -452,7 +452,7 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                                 if(len1 == len2 && (strcmp(buf1,buf2) == 0)){
                                     strcpy(newDir->result,"same");
                                 }else{
-                                    strcpy(newDir->result,"本质差异");
+                                    strcpy(newDir->result,"ladiff");
                                 }
                             }else{
                                 printf("Get readlink Error: %s\n",  strerror(errno));  
@@ -460,7 +460,7 @@ int compareTraverse(struct Filenode *szDir1,struct Filenode *szDir2,struct Filen
                             }
                         }else{
                             result = 1;
-                            strcpy(newDir->result,"类型不同");
+                            strcpy(newDir->result,"tydiff");
                         }            
                     }
                     if(node == NULL){
@@ -536,7 +536,7 @@ int main(int argc,char** argv)
     //输出比较结果
     if(argc == 4 && strcmp(argv[3],"x") == 0){
         FILE *fd;
-        fd = fopen("/home/chenxy/test/ks-1/result.csv","w+");
+        fd = fopen("/tmp/result.csv","w+");
         PreOderTraverse(&rsltDir,0,fd);
         fclose(fd);
     }else{
@@ -544,3 +544,10 @@ int main(int argc,char** argv)
     }
     return 0;
 }
+/*
+    无对应      nocor
+    轻微差异    lidiff
+    本质差异    ladiff
+    类型差异    tydiff
+    缺少        miss
+*/
