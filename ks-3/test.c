@@ -4,6 +4,8 @@
 #include <string.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <errno.h>
+#include <dirent.h>
 
 void rm_other_blank(char *str)
 {
@@ -57,6 +59,7 @@ int singlePidAnalysis(int pid)
     };
     sprintf(pidDir, "/proc/%d", pid);
 
+    //确认存在进程号的目录
     if ((access(pidDir, F_OK)) == -1)
     {
         printf("pid %d is not exist\n", pid);
@@ -64,6 +67,8 @@ int singlePidAnalysis(int pid)
     }
 
     // 获取进程程序对应的命令行
+    // /pro/<PID>/exe 指向启动当前进程的可执行文件（完整路径）的符号链接
+    // 通过/proc/N/exe可以启动当前进程的一个拷贝
     char cmdFile[64] = {
         0,
     };
@@ -290,15 +295,126 @@ int singlePidAnalysis(int pid)
     return 0;
 }
 
+
+//过滤掉不是进程的目录,
+//不想要将此目录结构复制到 entry_list 数组,就返回0
+int dirSelect(const  struct  dirent * dir)
+{
+    if(dir->d_type & DT_DIR){
+        //目录
+        if (strcmp(dir->d_name, ".") == 0 
+            || strcmp(dir->d_name, "..") == 0){
+            return 0;
+        }
+        int i = atoi(dir->d_name);
+        if(i == 0){
+            return 0;
+        }else{
+            return 1;
+        }
+    }
+    return 0;
+}
+
+//默认比较的资源名称是VmSize
+char resourcename[16]="VmSize";
+int getResourceValue(const char * pid)
+{
+    char rvstr[16]={0,};
+    int  rv=0;
+
+    FILE *fd;
+    char statusFile[512] = {
+        0,
+    };
+    sprintf(statusFile, "/proc/%s/status", pid);
+
+    fd = fopen(statusFile, "r");
+    if (fd == NULL)
+    {
+        printf("open %s failed\n", statusFile);
+        return -1;
+    }
+
+    char line[128] = {
+        0,
+    };
+    memset(line, 0, sizeof(line));
+    while (fgets(line, sizeof(line), fd) != NULL)
+    {
+        // 查找resourcename开头的字符串
+        if (strstr(line, resourcename) == line){
+            // 获取第一个空格后的
+            const char s[2] = "\t";
+            char *token;
+            token = strtok(line, s);
+            /* 继续获取其他的子字符串 */
+            token = strtok(NULL, s);
+            if (token != NULL)
+            {
+                snprintf(rvstr, sizeof(rvstr) - 1, "%s\n", token);
+                rv=atoi(rvstr);
+            }
+        }
+    }
+    fclose(fd);
+
+    return rv;
+}
+
+//比较两个目录大小
+int dirCompar(const struct dirent **dir1, const struct dirent**dir2)
+{
+
+    if(getResourceValue((*dir1)->d_name) > getResourceValue((*dir2)->d_name)) {
+        return 1;
+    }
+    return 0;
+}
+
+int sortAllProc()
+{
+    //扫描目录
+    struct dirent **entry_list;
+    int count;
+    count = scandir("/proc/", &entry_list, dirSelect, dirCompar);
+    if (count < 0) {
+        fprintf(stderr,"scandir /proc error,%s\n",strerror(errno));
+        return EXIT_FAILURE;
+    }
+
+    printf("----%s sort----\n",resourcename);
+    for (int i = 0; i < count; i++) {
+        struct dirent *entry;
+        entry = entry_list[i];
+        printf("%s\t%d\n", entry->d_name,getResourceValue(entry->d_name));
+        free(entry);
+    }
+    free(entry_list);
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
-    int pid = 3326;
-    if (argc == 2){
-        pid = atoi(argv[1]);
+    int pid = -1;
+    if (argc != 2){
+        printf("Usage: %s [Pid | ResouceName] \n",argv[0]);
+        printf("argc %d ,argv :%s  \n",argc,argv[0]);
+        return 0;
+    }
+
+    pid = atoi(argv[1]);
+    if(pid != 0){
+        //显示某一特定进程的资源使用状况
         singlePidAnalysis(pid);
 
     }else{
-
-
+        //对某一特定资源占用的排行，显示系统内所有进程
+        strcpy(resourcename,argv[1]);
+        resourcename[strlen(argv[1])] ='\0';
+        sortAllProc();
     }
+
+    return 0;
 }
