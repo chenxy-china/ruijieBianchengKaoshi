@@ -54,7 +54,7 @@ int chk_number(char *str)
     memset(onlyonechar,0,sizeof(onlyonechar));
     strcpy(onlyonechar,"e.+-");
     memset(s,0,sizeof(s));
-    strcpy(onlyonechar,"e");
+    strcpy(s,"e");
     result = 1;
     while (str[i] != '\0') {
         if (str[i] != ' ') {
