@@ -162,68 +162,24 @@ int chk_number(char *str)
 }
 int main(int argc, char *argv[])
 {
-    int result;
-    unsigned char ch, lch;
+    int rtn;
     char buf[1024];
-    char lbuf[1024];
-    int i;
-    fd_set readfds;
-    int fd;
-    int ret;
-
-    i = 0;
-    ch = '\0', lch = '\0';
     memset(buf,0,sizeof(buf));
-    memset(lbuf,0,sizeof(lbuf));
-    ret = -1;
-    fd = STDIN_FILENO;
-    struct termios new_setting, init_setting;
-    tcgetattr(0, &init_setting);
-    new_setting = init_setting;
-    new_setting.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(0, TCSANOW, &new_setting);
+    
+    while(1){
+        if(NULL == fgets(buf, 1024, stdin)){
+            return -1;
+        }
 
-    FD_ZERO(&readfds);
-    FD_SET(0, &readfds);
+        buf[strlen(buf)-1] = '\0';		// 去除\n
 
-    printf("please enter : \n");
-    while (1) {
-        pselect(1, &readfds, NULL, NULL, NULL, NULL);
-        result = read(fd, &ch, 1);
-        if (result != 1) {
+        if(strcmp(buf,"quit") == 0){
             break;
         }
-        lch = ch;
-        if (ch == ARROWKEY) {
-            continue;
-        }
-        else if (lch == ARROWKEY) {
-            if (ch == 'A') {
-                ret = write(STDOUT_FILENO, &lbuf, sizeof(lbuf));
-                memcpy(buf, lbuf, sizeof(lbuf));
-                i = sizeof(lbuf);
-                if (ret == 0){
-                    continue;
-                }
-            }
-            continue;
-        }
-        else if (ch != '\n') {
-            ret = write(STDOUT_FILENO, &ch, 1);
-            buf[i] = ch;
-            i++;
-            if (ret == 0){
-                continue;
-            }
-            continue; // avoid compile error
-        }
-        buf[i - 1] = '\0';
-        memcpy(lbuf, buf, sizeof(buf));
-        result = chk_number(buf);
-        printf("==>%d\n", result);
-        printf("please enter : \n");
-        i = 0;
-    } /* end while */
-    tcsetattr(0, TCSANOW, &init_setting);
+
+        rtn = chk_number(buf);
+        printf("==>%d\n",rtn);
+    }
+
     return 0;
 }
