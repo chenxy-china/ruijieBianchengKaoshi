@@ -43,7 +43,6 @@ int chk_regular(char *pattern, char *str,char full)
 
 int chk_number(char *str)
 {
-
     int i = 0;
     // 处理字符串开头空格
     while (str[i] != '\0') 
@@ -213,66 +212,23 @@ int chk_number(char *str)
 
 int main (int argc,char *argv[])
 {   
-    int result;
-    unsigned char ch = '\0',lch = '\0';
+    int rtn;
     char buf[1024] = {0};
-    char lbuf[1024] = {0};
-    int i = 0;
 
-    struct termios new_setting, init_setting;
-    tcgetattr(0, &init_setting);
-    new_setting = init_setting;    // get termios setting and save it
-    new_setting.c_lflag &= ~(ICANON | ECHO);
-    tcsetattr(0, TCSANOW, &new_setting);
+    while(1){
+        if(NULL == fgets(buf, 1024, stdin)){
+            return -1;
+        }
 
-    fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(0, &readfds);
-    int fd = STDIN_FILENO;
+        buf[strlen(buf)-1] = '\0';		// 去除\n
 
-    printf("please enter : \n");
-    while(1)
-    {
-        result = pselect (1, &readfds, NULL, NULL, NULL, NULL);
-
-        result = read(fd, &ch, 1);
-
-        if (result != 1) {
+        if(strcmp(buf,"quit") == 0){
             break;
         }
 
-        lch = ch;
-
-        if(ch == 0x1B ){
-            continue;
-        }else if( lch == 0x1B){
-            if(ch == 'A'){
-                int ret = write(STDOUT_FILENO, &lbuf, sizeof(lbuf));
-                memcpy(buf,lbuf,sizeof(lbuf));
-                i=sizeof(lbuf);
-                if(ret == 0)
-                    continue;
-            }
-            continue;
-        }else if( ch != '\n'){
-            int ret = write(STDOUT_FILENO, &ch, 1);	
-            buf[i] = ch;
-            i++;
-            if(ret == 0)
-                continue;
-            continue;
-        }
-
-        buf[i-1] = '\0';		// 去除\n
-        memcpy(lbuf,buf,sizeof(buf));
-
-        result = chk_number(buf);
-        printf("==>%d\n",result);
-
-        printf("please enter : \n");
-        i=0;
+        rtn = chk_number(buf);
+        printf("==>%d\n",rtn);
     }
 
-    tcsetattr(0, TCSANOW, &init_setting);
     return 0;
 }
