@@ -159,7 +159,7 @@ int singlePidAnalysis(int pid)
         {
             // 获取前一行 ，第一个"-"前的数据
             const char s[2] = "-";
-            char *token;
+            char *token=NULL;
             if (strlen(lastline) != 0)
             {
                 token = strtok(lastline, s);

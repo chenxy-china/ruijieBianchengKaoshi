@@ -1,7 +1,10 @@
 #"-O2", "-fmax-errors=10", "-Wall","-Werror", "-lm", "-lpthread", "--static", "-std=gnu99", "-DONLINE_JUDGE" 
 
 #编译器
-CC := gcc
+CROSS_COMPILE :=
+#CROSS_COMPILE := arm-linux-gnueabihf-
+
+CC := $(CROSS_COMPILE)gcc
 
 #当前路径
 CUR_DIR := $(shell pwd)
@@ -28,11 +31,14 @@ CFLAGS += -std=gnu99
 CFLAGS += -DONLINE_JUDGE
 CFLAGS += $(INCLUDE)
 
+ # If you want a static binary, you might uncomment these
+LDFLAGS = -static
+STRIP = -s
 
 #库文件参数
-LDFLAGS :=
-LDFLAGS += -lm
-LDFLAGS += -lpthread
+LDLIBS :=
+LDLIBS += -lm
+LDLIBS += -lpthread
 
 
 SRCS = $(wildcard *.c) 
@@ -46,7 +52,7 @@ $(OBJS):%.o:%.c
 	$(CC) -c $(CFLAGS) $^ -o $(OBJ_DIR)/$@
 
 $(BINS):%:%.o
-	$(CC) -o $(BIN_DIR)/$@ $(OBJ_DIR)/$^ $(LDFLAGS)
+	$(CC) -o $(BIN_DIR)/$@ $(OBJ_DIR)/$^ $(LDFLAGS) $(LDLIBS)
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)/$(BINS)
