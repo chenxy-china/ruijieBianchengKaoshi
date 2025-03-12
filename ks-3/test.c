@@ -383,11 +383,24 @@ int sortAllProc()
         return EXIT_FAILURE;
     }
 
+    // char cmd_show_status[512] = {
+    //     0,
+    // };
+
     printf("----%s sort----\n",resourcename);
     for (int i = 0; i < count; i++) {
         struct dirent *entry;
         entry = entry_list[i];
+        printf("--------------------------\n");
         printf("%s\t%d\n", entry->d_name,getResourceValue(entry->d_name));
+
+        // //20250312 显示进程的status
+        // memset(cmd_show_status,0,512);
+        // sprintf(cmd_show_status, "cat /proc/%s/status", entry->d_name);
+        // int ret = system(cmd_show_status);
+        // if(ret != 0){
+        //     printf(" %s error",cmd_show_status);
+        // }
         free(entry);
     }
     free(entry_list);
